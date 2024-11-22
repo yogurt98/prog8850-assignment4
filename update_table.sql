@@ -1,0 +1,2 @@
+ALTER TABLE TestTable
+ADD Age INT;
