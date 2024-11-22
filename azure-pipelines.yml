@@ -1,0 +1,66 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  sqlServerName: 'jlan-server.mysql.database.azure.com'
+  sqlDatabaseName: 'assignment4'
+  sqlAdminUsername: 'jlan'
+  sqlAdminPassword: '$(sqlAdminPassword)' # Securely stored variable
+
+stages:
+  - stage: DeployDatabase
+    displayName: 'Deploy and Update Database'
+    jobs:
+      - job: DeployAndValidate
+        displayName: 'Deploy and Validate SQL Scripts'
+        steps:
+          - task: SqlAzureDacpacDeployment@1
+            displayName: 'Run create_table.sql'
+            inputs:
+              azureSubscription: 'YourServiceConnectionName'
+              serverName: '$(sqlServerName)'
+              databaseName: '$(sqlDatabaseName)'
+              sqlFile: 'create_table.sql'
+              sqlUsername: '$(sqlAdminUsername)'
+              sqlPassword: '$(sqlAdminPassword)'
+
+          - task: SqlAzureDacpacDeployment@1
+            displayName: 'Run update_table.sql'
+            inputs:
+              azureSubscription: 'YourServiceConnectionName'
+              serverName: '$(sqlServerName)'
+              databaseName: '$(sqlDatabaseName)'
+              sqlFile: 'update_table.sql'
+              sqlUsername: '$(sqlAdminUsername)'
+              sqlPassword: '$(sqlAdminPassword)'
+
+          - task: SqlAzureDacpacDeployment@1
+            displayName: 'Validate Schema Update'
+            inputs:
+              azureSubscription: 'YourServiceConnectionName'
+              serverName: '$(sqlServerName)'
+              databaseName: '$(sqlDatabaseName)'
+              sqlInline: |
+                IF EXISTS (SELECT 1 
+                           FROM INFORMATION_SCHEMA.COLUMNS 
+                           WHERE TABLE_NAME = 'TestTable' AND COLUMN_NAME = 'Age')
+                BEGIN
+                    PRINT 'Validation Successful: Column "Age" exists.'
+                END
+                ELSE
+                BEGIN
+                    THROW 50000, 'Validation Failed: Column "Age" does not exist.', 1;
+                END
+
+- script: |
+    echo Add other tasks to build, test, and deploy your project.
+    echo See https://aka.ms/yaml
+  displayName: 'Run a multi-line script'
